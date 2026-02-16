@@ -349,7 +349,7 @@ export default function App() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
               <div className="text-slate-500 text-xs font-bold uppercase mb-1">Total Pendientes</div>
               <div className="text-2xl font-bold text-slate-900">12</div>
@@ -369,8 +369,8 @@ export default function App() {
         </div>
 
         {/* Requests Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-           <table className="w-full text-left text-sm text-slate-600">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+           <table className="w-full min-w-[768px] text-left text-sm text-slate-600">
               <thead className="bg-slate-50 text-slate-900 font-semibold border-b border-slate-200">
                  <tr>
                     <th className="px-6 py-4">Fecha Solicitud</th>

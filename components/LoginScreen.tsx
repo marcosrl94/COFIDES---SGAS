@@ -15,10 +15,10 @@ const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         <div className="absolute top-[40%] right-[0%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[100px]"></div>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl flex overflow-hidden relative z-10 min-h-[600px]">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl flex flex-col md:flex-row overflow-hidden relative z-10 min-h-[500px] md:min-h-[600px]">
         
         {/* Left: Branding */}
-        <div className="w-1/2 bg-slate-50 p-12 flex flex-col justify-between border-r border-slate-100">
+        <div className="w-full md:w-1/2 bg-slate-50 p-8 md:p-12 flex flex-col justify-between md:border-r border-slate-100">
            <div>
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">
@@ -47,7 +47,7 @@ const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         </div>
 
         {/* Right: Login Actions */}
-        <div className="w-1/2 p-12 flex flex-col justify-center">
+        <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center">
            <h2 className="text-2xl font-bold text-slate-800 mb-8">Seleccione su perfil de acceso</h2>
            
            <div className="space-y-4">
