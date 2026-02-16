@@ -4,22 +4,30 @@ import { Sector, Country, Question, FundType, DocumentRequirement } from './type
 export const FUNDS: { id: FundType; name: string; description: string; regulations: string[] }[] = [
   { 
     id: 'FIEX_FONPYME', 
-    name: 'Carril Internacional (FIEX/FONPYME)', 
+    name: 'Carril Internacional', 
     description: 'Internacionalización tradicional.',
     regulations: ['Normas de Desempeño IFC (PS1-PS8)', 'Guías EHS Banco Mundial']
   },
   { 
     id: 'FOCO', 
-    name: 'Carril Regulatorio UE (Fondo FOCO)', 
+    name: 'Carril Regulatorio UE', 
     description: 'Inversión extranjera en España ligada a transición verde/digital.',
     regulations: ['Reglamento Taxonomía UE 2020/852', 'Criterios DNSH', 'Salvaguardas Mínimas (MSS)']
   },
   { 
     id: 'FIS', 
-    name: 'Carril de Impacto (Fondo FIS)', 
+    name: 'Carril de Impacto', 
     description: 'Inversión de Impacto Social y Ecológico.',
     regulations: ['Teoría del Cambio', 'Medición de Adicionalidad', 'KPIs de Impacto']
   }
+];
+
+/** Requisitos del marco ambiental y social transversal (aplican a todos los carriles) */
+export const TRANSVERSAL_ES_REQUIREMENTS = [
+  { id: 'ifc', name: 'Normas de Desempeño IFC', desc: 'PS1-PS8: Evaluación y gestión ambiental y social' },
+  { id: 'mss', name: 'Salvaguardas Mínimas', desc: 'DD.HH. (OCDE), anticorrupción, conducta empresarial' },
+  { id: 'esrs', name: 'Temas ESRS', desc: 'E1-E4 (Clima, Contaminación, Agua, Biodiversidad), S1-S3 (Trabajo, Cadena, Comunidades), G1' },
+  { id: 'ehs', name: 'Guías EHS', desc: 'Prevención y control de riesgos ambientales, salud y seguridad' },
 ];
 
 // 2. SECTORS (UPDATED WITH COFIDES METHODOLOGY & POLICY CONFIG)
@@ -46,7 +54,8 @@ export const SECTORS: Sector[] = [
       'Soja en zonas de riesgo',
       'Ganadería intensiva',
       'Tecnología Agrícola (AgriTech)',
-      'Silvicultura Sostenible'
+      'Silvicultura Sostenible',
+      'Otros'
     ]
   },
   { 
@@ -70,7 +79,8 @@ export const SECTORS: Sector[] = [
       'Extracción Oil & Gas',
       'Infraestructura de Transporte Gas',
       'Integración de Renovables en Red',
-      'Captura y Almacenamiento de Carbono (CCS)'
+      'Captura y Almacenamiento de Carbono (CCS)',
+      'Otros'
     ]
   },
   { 
@@ -94,7 +104,8 @@ export const SECTORS: Sector[] = [
       'Fabricación de Maquinaria',
       'Industria Textil',
       'Automoción (Combustión Interna)',
-      'Automoción (Vehículo Eléctrico)'
+      'Automoción (Vehículo Eléctrico)',
+      'Otros'
     ]
   },
   { 
@@ -116,7 +127,8 @@ export const SECTORS: Sector[] = [
       'Data Centers / Cloud Infrastructure',
       'Consultoría IT',
       'Inteligencia Artificial',
-      'Ciberseguridad'
+      'Ciberseguridad',
+      'Otros'
     ]
   },
   { 
@@ -377,6 +389,28 @@ export const SOCIAL_CHALLENGES = [
   'Educación de Calidad y Empleabilidad Joven',
   'Salud, Bienestar y Silver Economy'
 ];
+
+/** Sectores FOCO (formulario oficial: presenta-tu-propuesta FOCO) */
+export const FOCO_SECTORS = [
+  'Energías renovables',
+  'Eficiencia energética',
+  'Descarbonización de la economía',
+  'Movilidad eléctrica',
+  'Desarrollo de infraestructuras sostenibles',
+  'Digitalización de tejido empresarial y procesos productivos',
+  'Biotecnología',
+  'Agricultura sostenible',
+  'Otros',
+] as const;
+
+/** Tipo de entidad FIS (formulario oficial FIS) */
+export const FIS_ENTITY_TYPES = [
+  'Empresa consolidada',
+  'Empresa emergente',
+  'Asociación',
+  'Cooperativa',
+  'Otra',
+] as const;
 
 // 5. LEGAL CLAUSES TEMPLATES (EXPANDED)
 export const CLAUSE_TEMPLATES: Record<string, string> = {

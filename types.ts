@@ -123,6 +123,22 @@ export interface ProjectState {
   socialChallenge: string | null; // Only for FIS
   answers: Record<string, boolean>; // QuestionID -> Yes/No
   documents: Record<string, UploadedDoc>; // ReqID -> Doc Info
+
+  // --- Datos adicionales por fondo (formularios COFIDES) ---
+  /** FOCO: Inversión total (EUR), % Deuda, % Equity, sector FOCO, coinversor, sponsor, descripción */
+  investmentTotal?: number;
+  debtPercent?: number;
+  equityPercent?: number;
+  focoSector?: string;
+  coinvestorEntity?: string;
+  coinvestorCountry?: string;
+  sponsorName?: string;
+  projectDescription?: string;
+  /** FIS: Tipo entidad, pyme, tipo financiación, teoría del cambio */
+  fisEntityType?: string;
+  fisIsPyme?: boolean;
+  fisFinancingType?: 'Capital' | 'Deuda';
+  fisTheoryOfChange?: boolean;
 }
 
 export interface AssessmentResult {

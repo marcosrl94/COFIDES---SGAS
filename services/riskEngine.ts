@@ -1,11 +1,12 @@
-import { ProjectState, AssessmentResult, Sector, Country, Question } from '../types';
+import { ProjectState, AssessmentResult, Question } from '../types';
 import { CLAUSE_TEMPLATES } from '../constants';
 
 export const calculateRisk = (
   state: ProjectState,
   questions: Question[]
 ): AssessmentResult => {
-  if (!state.sector || (!state.country && state.locations.length === 0)) {
+  const hasLocations = state.locations && state.locations.length > 0;
+  if (!state.sector || (!state.country && !hasLocations)) {
     throw new Error("Datos incompletos para el cálculo");
   }
 
@@ -14,7 +15,7 @@ export const calculateRisk = (
   // Calcular Riesgo País Ponderado
   let weightedCountryRisk = 0;
   
-  if (state.locations && state.locations.length > 0) {
+  if (hasLocations) {
     let totalPercent = 0;
     let weightedSum = 0;
 

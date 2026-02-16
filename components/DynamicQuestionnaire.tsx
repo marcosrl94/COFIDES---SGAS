@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { QUESTIONS } from '../constants';
-import { ProjectState, Question, QuestionCategory } from '../types';
+import { ProjectState, Question } from '../types';
+import { getPrimaryCountry } from '../utils/projectState';
 import { FileText, ChevronRight, AlertCircle, Check, Sparkles, Bot, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 interface Props {
@@ -49,18 +50,20 @@ const DynamicQuestionnaire: React.FC<Props> = ({ state, onChange, onNext, onBack
   const progressPercentage = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
   const allAnswered = totalQuestions > 0 && answeredCount === totalQuestions;
 
+  const primaryCountry = getPrimaryCountry(state);
+
   // --- AI SIMULATION LOGIC ---
   const generateAiReasoning = (question: Question, answer: boolean): AiFeedback => {
-    const countryName = state.country?.name || 'el país local';
-    const sectorName = state.sector?.name || 'el sector';
-    const riskLevel = state.country?.riskScore || 3;
+    const countryName = primaryCountry?.name ?? 'el país local';
+    const sectorName = state.sector?.name ?? 'el sector';
+    const riskLevel = primaryCountry?.riskScore ?? 3;
 
     if (answer) {
       // SCENARIO: PASS (GREEN)
       return {
         type: 'success',
         title: 'PASS: Alineación Verificada',
-        message: `El cumplimiento de ${question.riskFactor} mitiga el riesgo inherente en ${countryName}. Al disponer de este mecanismo, el proyecto se alinea con los estándares de ${state.fund} para ${sectorName}, reduciendo la necesidad de covenants adicionales en el contrato.`
+        message: `El cumplimiento de ${question.riskFactor} mitiga el riesgo inherente en ${countryName}. Al disponer de este mecanismo, el proyecto se alinea con los estándares de ${state.fund ?? 'COFIDES'} para ${sectorName}, reduciendo la necesidad de covenants adicionales en el contrato.`
       };
     } else {
       // SCENARIO: GAP DETECTED (RED/ORANGE)
@@ -109,7 +112,7 @@ const DynamicQuestionnaire: React.FC<Props> = ({ state, onChange, onNext, onBack
               2. Due Diligence: {state.fund === 'FOCO' ? 'Taxonomía UE & DNSH' : state.fund === 'FIS' ? 'Impacto & IFC' : 'Normas de Desempeño IFC'}
             </h2>
             <p className="text-sm text-slate-500 mt-1">
-              Evaluando: <span className="font-medium text-slate-900">{state.sector?.name}</span> en <span className="font-medium text-slate-900">{state.country?.name}</span>
+              Evaluando: <span className="font-medium text-slate-900">{state.sector?.name}</span> en <span className="font-medium text-slate-900">{primaryCountry?.name ?? 'N/A'}</span>
             </p>
           </div>
           <div className="text-right">

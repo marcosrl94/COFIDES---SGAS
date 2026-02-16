@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { ProjectState, ChatMessage, FundType } from '../types';
+import { ProjectState, ChatMessage } from '../types';
 import SmartScreening from './SmartScreening';
 import DynamicQuestionnaire from './DynamicQuestionnaire';
 import DocumentManager from './DocumentManager';
 import ResultsDashboard from './ResultsDashboard';
+import { MOCK_CLIENT_SOLICITUDES, MOCK_CONVOCATORIAS_ABIERTAS } from '../data/mockData';
 import { 
   Info, 
   FileText, 
   MessageSquare, 
-  LayoutDashboard, 
   CheckCircle2, 
   Clock, 
   Send, 
@@ -18,9 +18,14 @@ import {
   BookOpen,
   Target,
   Globe,
-  HelpCircle
+  HelpCircle,
+  PlusCircle,
+  Eye,
+  Shield,
+  Calendar,
+  ExternalLink
 } from 'lucide-react';
-import { FUNDS } from '../constants';
+import { FUNDS, TRANSVERSAL_ES_REQUIREMENTS } from '../constants';
 
 interface Props {
   state: ProjectState;
@@ -30,7 +35,7 @@ interface Props {
   onLogout: () => void;
 }
 
-type ClientView = 'INFO' | 'APPLICATION' | 'STATUS' | 'CHAT';
+type ClientView = 'INFO' | 'SOLICITUDES' | 'APPLICATION' | 'STATUS' | 'CHAT';
 
 const ClientDashboard: React.FC<Props> = ({ state, onChange, messages, onSendMessage, onLogout }) => {
   const [activeView, setActiveView] = useState<ClientView>('INFO');
@@ -67,6 +72,61 @@ const ClientDashboard: React.FC<Props> = ({ state, onChange, messages, onSendMes
           ))}
        </div>
 
+       {/* Marco E&S transversal (complemento a los requisitos específicos de cada carril) */}
+       <div className="mb-12">
+         <div className="flex items-center gap-2 mb-4">
+           <div className="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center text-white">
+             <Shield className="w-4 h-4" />
+           </div>
+           <div>
+             <h3 className="font-bold text-slate-800">Marco Ambiental y Social Transversal</h3>
+             <p className="text-xs text-slate-500">Requisitos E&S aplicables a todos los carriles, como complemento a la normativa específica de cada fondo.</p>
+           </div>
+         </div>
+         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+           {TRANSVERSAL_ES_REQUIREMENTS.map((req) => (
+             <div key={req.id} className="bg-slate-50 rounded-lg border border-slate-200 p-4">
+               <h4 className="font-semibold text-slate-800 text-sm">{req.name}</h4>
+               <p className="text-xs text-slate-500 mt-1">{req.desc}</p>
+             </div>
+           ))}
+         </div>
+       </div>
+
+       {/* Convocatorias abiertas — fondos gestionados por COFIDES */}
+       <div className="mb-12">
+         <div className="flex items-center gap-2 mb-4">
+           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
+             <Calendar className="w-4 h-4" />
+           </div>
+           <div>
+             <h3 className="font-bold text-slate-800">Convocatorias abiertas</h3>
+             <p className="text-xs text-slate-500">Información sobre convocatorias activas en los fondos gestionados por COFIDES.</p>
+           </div>
+         </div>
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           {MOCK_CONVOCATORIAS_ABIERTAS.map((conv) => (
+             <div key={conv.id} className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md hover:border-indigo-200 transition-all">
+               <div className="flex justify-between items-start gap-3">
+                 <div className="flex-1 min-w-0">
+                   <span className="text-xs font-bold text-indigo-600 uppercase tracking-wide">{conv.fund}</span>
+                   <h4 className="font-bold text-slate-900 mt-1">{conv.name}</h4>
+                   <p className="text-sm text-slate-500 mt-2">{conv.description}</p>
+                 </div>
+                 {conv.url ? (
+                   <a href={conv.url} target="_blank" rel="noopener noreferrer" className="shrink-0 flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                     <ExternalLink className="w-4 h-4" />
+                     Ver
+                   </a>
+                 ) : (
+                   <span className="shrink-0 text-xs text-slate-400">Próximamente</span>
+                 )}
+               </div>
+             </div>
+           ))}
+         </div>
+       </div>
+
        <div className="bg-blue-50 border border-blue-100 rounded-xl p-8 flex items-center justify-between">
           <div>
              <h3 className="font-bold text-blue-900 text-lg mb-1">¿Listo para comenzar su solicitud?</h3>
@@ -74,14 +134,88 @@ const ClientDashboard: React.FC<Props> = ({ state, onChange, messages, onSendMes
           </div>
           <button 
             onClick={() => {
-              setActiveView('APPLICATION');
-              setWizardStep(1);
+              setActiveView('SOLICITUDES');
             }}
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg shadow-blue-200 transition-all flex items-center gap-2"
           >
-            Nueva Operación <ChevronRight className="w-4 h-4" />
+            Ver mis solicitudes <ChevronRight className="w-4 h-4" />
           </button>
        </div>
+    </div>
+  );
+
+  const renderSolicitudesList = () => (
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Mis Solicitudes</h2>
+          <p className="text-slate-500 text-sm mt-1">Gestione sus solicitudes de financiación: cree nuevas o revise las existentes.</p>
+        </div>
+        <button
+          onClick={() => {
+            setActiveView('APPLICATION');
+            setWizardStep(1);
+          }}
+          className="shrink-0 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-purple-200 transition-all"
+        >
+          <PlusCircle className="w-5 h-5" />
+          Nueva solicitud
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        {MOCK_CLIENT_SOLICITUDES.map((sol) => (
+          <div
+            key={sol.id}
+            className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center gap-4"
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-mono text-xs text-slate-500">{sol.ref}</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold
+                  ${sol.status === 'Borrador' ? 'bg-slate-100 text-slate-700' 
+                  : sol.status === 'En revisión' ? 'bg-blue-100 text-blue-700' 
+                  : sol.status === 'Aprobada' ? 'bg-green-100 text-green-700' 
+                  : sol.status === 'Rechazada' ? 'bg-red-100 text-red-700' 
+                  : 'bg-amber-100 text-amber-700'}
+                `}>
+                  {sol.status}
+                </span>
+              </div>
+              <h3 className="font-bold text-slate-900 mt-1">{sol.type}</h3>
+              <p className="text-sm text-slate-500 mt-0.5">
+                {sol.fund} · Última actualización: {sol.lastUpdate}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setActiveView('APPLICATION');
+                setWizardStep(1);
+              }}
+              className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-200 text-purple-700 font-medium hover:bg-purple-50 transition-colors"
+            >
+              <Eye className="w-4 h-4" />
+              Revisar
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {MOCK_CLIENT_SOLICITUDES.length === 0 && (
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-12 text-center">
+          <p className="text-slate-500 mb-4">Aún no tiene solicitudes.</p>
+          <button
+            onClick={() => {
+              setActiveView('APPLICATION');
+              setWizardStep(1);
+            }}
+            className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl"
+          >
+            <PlusCircle className="w-5 h-5" />
+            Crear primera solicitud
+          </button>
+        </div>
+      )}
     </div>
   );
 
@@ -260,9 +394,9 @@ const ClientDashboard: React.FC<Props> = ({ state, onChange, messages, onSendMes
                />
                <SidebarButton 
                   icon={<FileText />} 
-                  label="Mi Solicitud" 
-                  active={activeView === 'APPLICATION'} 
-                  onClick={() => setActiveView('APPLICATION')} 
+                  label="Mis Solicitudes" 
+                  active={activeView === 'SOLICITUDES' || activeView === 'APPLICATION'} 
+                  onClick={() => setActiveView('SOLICITUDES')} 
                />
                <SidebarButton 
                   icon={<Clock />} 
@@ -297,6 +431,7 @@ const ClientDashboard: React.FC<Props> = ({ state, onChange, messages, onSendMes
          <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10">
             <h1 className="text-xl font-bold text-slate-800">
                {activeView === 'INFO' && 'Información de Producto'}
+               {activeView === 'SOLICITUDES' && 'Mis Solicitudes'}
                {activeView === 'APPLICATION' && 'Nueva Solicitud de Financiación'}
                {activeView === 'STATUS' && 'Seguimiento de Expediente'}
                {activeView === 'CHAT' && 'Asistente Virtual & Soporte'}
@@ -315,17 +450,49 @@ const ClientDashboard: React.FC<Props> = ({ state, onChange, messages, onSendMes
          {/* Scrollable Area */}
          <main className="flex-1 overflow-y-auto p-8 relative">
             {activeView === 'INFO' && renderInfoTab()}
+            {activeView === 'SOLICITUDES' && renderSolicitudesList()}
             {activeView === 'APPLICATION' && renderApplicationWizard()}
             {activeView === 'STATUS' && renderStatusTab()}
             {activeView === 'CHAT' && renderChatTab()}
+
+            {/* Banner ayuda — interactuar con gestor */}
+            {activeView !== 'CHAT' && (
+              <div className="mt-12 max-w-4xl mx-auto">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center shrink-0">
+                      <HelpCircle className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-amber-900">¿Necesita ayuda?</h3>
+                      <p className="text-sm text-amber-800/90 mt-0.5">Contacte con su gestor o utilice el asistente virtual para resolver dudas.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveView('CHAT')}
+                    className="shrink-0 flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-5 rounded-lg shadow-md shadow-amber-200/50 transition-all"
+                  >
+                    <MessageSquare className="w-5 h-5" />
+                    Ir al asistente
+                  </button>
+                </div>
+              </div>
+            )}
          </main>
       </div>
     </div>
   );
 };
 
-// Helper
-const SidebarButton = ({ icon, label, active, onClick, badge }: any) => (
+interface SidebarButtonProps {
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  badge?: number;
+}
+
+const SidebarButton: React.FC<SidebarButtonProps> = ({ icon, label, active, onClick, badge }) => (
    <button 
       onClick={onClick}
       className={`w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-lg transition-all relative

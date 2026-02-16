@@ -5,29 +5,27 @@ import SmartScreening from './components/SmartScreening';
 import DynamicQuestionnaire from './components/DynamicQuestionnaire';
 import ResultsDashboard from './components/ResultsDashboard';
 import DocumentManager from './components/DocumentManager';
-import { ProjectState, Sector, Country, SectorType, UserRole, ChatMessage, ApplicationStatus } from './types';
-import { FUNDS, SECTORS, COUNTRIES, SECTOR_MATRIX_INIT, COUNTRY_MATRIX_INIT, ESRS_TOPICS } from './constants';
+import { ProjectState, SectorType, UserRole, ChatMessage } from './types';
+import { SECTORS } from './constants';
+import { MOCK_PIPELINE, MOCK_SOLICITUDES, MOCK_HISTORIAL, MOCK_ALERTAS, MOCK_CLIENTES } from './data/mockData';
 import { 
-  LayoutDashboard, 
-  PlusCircle, 
   ClipboardCheck, 
   Activity, 
   Settings, 
   Search, 
   Bell, 
-  Clock, 
-  PlayCircle, 
-  Archive, 
   Sliders, 
-  Zap, 
   ChevronRight,
   MessageSquare,
   Send,
-  User,
   LogOut,
   Inbox,
   Filter,
-  ArrowUpRight
+  ArrowUpRight,
+  FileUp,
+  BarChart3,
+  History,
+  AlertTriangle
 } from 'lucide-react';
 
 // --- SHARED INITIAL STATE ---
@@ -47,41 +45,18 @@ const INITIAL_STATE: ProjectState = {
   activities: []
 };
 
-// --- MOCK PIPELINE DATA FOR MANAGER (PORTFOLIO VIEW) ---
-type PipelineStatus = 'Borrador' | 'Due Diligence' | 'Aprobado' | 'Monitoreo' | 'Cerrado' | 'Rechazado';
-interface PipelineItem {
-  id: string;
-  name: string;
-  fund: string;
-  sector: string;
-  country: string;
-  amount: string;
-  risk: 'Bajo' | 'Medio' | 'Alto' | 'Crítico';
-  status: PipelineStatus;
-}
-const MOCK_PIPELINE: PipelineItem[] = [
-  { id: 'OP-23-098', name: 'Parque Eólico Offshore', fund: 'FIEX', sector: 'Energía', country: 'Brasil', amount: '45.0M€', risk: 'Alto', status: 'Monitoreo' },
-  { id: 'OP-24-012', name: 'Expansión Planta Automoción', fund: 'FONPYME', sector: 'Manufactura', country: 'México', amount: '5.5M€', risk: 'Medio', status: 'Due Diligence' },
-  { id: 'OP-24-045', name: 'Red de Clínicas Rurales', fund: 'FIS', sector: 'Salud', country: 'Colombia', amount: '12.0M€', risk: 'Bajo', status: 'Aprobado' },
-];
+/** Vista actual del panel de gestión */
+type ManagerView = 'REQUESTS' | 'NEW' | 'MONITORING' | 'HISTORY' | 'MESSAGES' | 'SETTINGS' | 'EVALUATION';
 
-// --- MOCK REQUESTS DATA (INBOX VIEW) ---
-interface RequestItem {
-  id: string;
-  date: string;
-  client: string;
-  fund: string;
-  type: string;
-  status: 'NUEVA' | 'EN_REVISION' | 'SUBSANACION' | 'LISTO_COMITE';
-  priority: 'ALTA' | 'MEDIA' | 'BAJA';
-}
-
-const MOCK_SOLICITUDES: RequestItem[] = [
-   { id: 'REQ-24-889', date: 'Hoy, 09:30', client: 'Empresa Agro Tech S.L.', fund: 'FOCO', type: 'Financiación Directa', status: 'NUEVA', priority: 'ALTA' },
-   { id: 'REQ-24-885', date: 'Ayer, 16:45', client: 'Logística Inversa Global', fund: 'FIEX', type: 'Préstamo Participativo', status: 'EN_REVISION', priority: 'MEDIA' },
-   { id: 'REQ-24-882', date: '22/10/2023', client: 'Green Hydrogen South', fund: 'FOCO', type: 'Project Finance', status: 'SUBSANACION', priority: 'ALTA' },
-   { id: 'REQ-24-870', date: '20/10/2023', client: 'Textil Sostenible SA', fund: 'FIS', type: 'Capital', status: 'LISTO_COMITE', priority: 'BAJA' },
-];
+const MANAGER_VIEW_LABELS: Record<ManagerView, string> = {
+  REQUESTS: 'Solicitudes',
+  NEW: 'Alta de operación',
+  MONITORING: 'Monitoreo',
+  HISTORY: 'Historial y alertas',
+  MESSAGES: 'Chat',
+  SETTINGS: 'Configuración',
+  EVALUATION: 'Evaluación',
+};
 
 export default function App() {
   // 1. AUTH & ROUTING STATE
@@ -97,13 +72,9 @@ export default function App() {
 
   // 4. MANAGER UI STATE
   // Added 'REQUESTS' to the view union type
-  const [managerView, setManagerView] = useState<'PIPELINE' | 'REQUESTS' | 'NEW' | 'EVALUATION' | 'MESSAGES' | 'SETTINGS'>('REQUESTS');
+  const [managerView, setManagerView] = useState<ManagerView>('REQUESTS');
   const [managerWizardStep, setManagerWizardStep] = useState(1);
   const [selectedSectorId, setSelectedSectorId] = useState<SectorType | null>(null);
-  
-  // Matrix Data State
-  const [sectorMatrix, setSectorMatrix] = useState(SECTOR_MATRIX_INIT);
-  const [countryMatrix, setCountryMatrix] = useState(COUNTRY_MATRIX_INIT);
 
 
   // --- HANDLERS ---
@@ -185,9 +156,9 @@ export default function App() {
         <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center mr-3 text-white font-bold">C</div>
         <span className="font-bold text-white text-lg tracking-tight">SGAS 2.0</span>
       </div>
-      <div className="flex-1 py-6 space-y-1">
+      <div className="flex-1 py-6 space-y-1 overflow-y-auto">
         
-        <div className="px-6 py-2 text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Gestión</div>
+        <div className="px-6 py-2 text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Buzón</div>
         <SidebarItem 
             icon={<Inbox size={20} />} 
             label="Solicitudes" 
@@ -195,21 +166,14 @@ export default function App() {
             onClick={() => setManagerView('REQUESTS')} 
             badge="3"
         />
-        <SidebarItem 
-            icon={<LayoutDashboard size={20} />} 
-            label="Pipeline Global" 
-            active={managerView === 'PIPELINE'} 
-            onClick={() => setManagerView('PIPELINE')} 
-        />
         
         <div className="px-6 py-2 text-xs font-bold text-slate-500 uppercase tracking-widest mt-6">Operativa</div>
         <SidebarItem 
-            icon={<PlusCircle size={20} />} 
-            label="Nueva Operación" 
+            icon={<FileUp size={20} />} 
+            label="Alta de operación" 
             active={managerView === 'NEW'} 
             onClick={() => setManagerView('NEW')} 
         />
-        {/* Only show "Evaluación Activa" if we are actually evaluating specific one, usually navigated from requests */}
         {managerView === 'EVALUATION' && (
            <SidebarItem 
               icon={<ClipboardCheck size={20} />} 
@@ -219,9 +183,26 @@ export default function App() {
               badge="Active"
            />
         )}
+        
+        <div className="px-6 py-2 text-xs font-bold text-slate-500 uppercase tracking-widest mt-6">Seguimiento</div>
+        <SidebarItem 
+            icon={<BarChart3 size={20} />} 
+            label="Monitoreo de operaciones vigentes" 
+            active={managerView === 'MONITORING'} 
+            onClick={() => setManagerView('MONITORING')} 
+        />
+        <SidebarItem 
+            icon={<History size={20} />} 
+            label="Historial y alertas" 
+            active={managerView === 'HISTORY'} 
+            onClick={() => setManagerView('HISTORY')} 
+            badge={MOCK_ALERTAS.filter(a => a.severity === 'Alta').length > 0 ? MOCK_ALERTAS.filter(a => a.severity === 'Alta').length : undefined}
+        />
+        
+        <div className="px-6 py-2 text-xs font-bold text-slate-500 uppercase tracking-widest mt-6">Comunicación</div>
         <SidebarItem 
             icon={<MessageSquare size={20} />} 
-            label="Buzón Mensajes" 
+            label="Chat" 
             active={managerView === 'MESSAGES'} 
             onClick={() => setManagerView('MESSAGES')} 
             badge={messages.filter(m => !m.isRead && m.sender === 'CLIENT').length > 0 ? messages.filter(m => !m.isRead && m.sender === 'CLIENT').length : undefined} 
@@ -262,7 +243,8 @@ export default function App() {
         {/* Chat Area */}
         <div className="flex-1 flex flex-col">
            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-bold text-slate-800">Chat con Empresa Agro Tech S.L.</h3>
+              <h3 className="font-bold text-slate-800">Chat</h3>
+              <span className="text-xs text-slate-500">Empresa Agro Tech S.L.</span>
            </div>
            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/30">
               {messages.map((msg) => (
@@ -338,8 +320,8 @@ export default function App() {
      <div className="animate-in fade-in duration-500 pb-12">
         <div className="flex justify-between items-center mb-8">
            <div>
-              <h2 className="text-2xl font-bold text-slate-800">Solicitudes Entrantes</h2>
-              <p className="text-slate-500 text-sm mt-1">Bandeja de entrada de nuevas operaciones pendientes de admisión.</p>
+              <h2 className="text-2xl font-bold text-slate-800">Solicitudes</h2>
+              <p className="text-slate-500 text-sm mt-1">Buzón de solicitudes. Revisar el informe correspondiente en cada caso para evaluar admisión.</p>
            </div>
            <div className="flex gap-2">
               <button className="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-medium shadow-sm flex items-center gap-2 hover:bg-slate-50">
@@ -498,16 +480,19 @@ export default function App() {
     </div>
   );
 
-  const renderManagerPipeline = () => (
+  const renderManagerMonitoring = () => (
     <div className="animate-in fade-in duration-500 pb-12">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-slate-800">Pipeline Global de Inversiones</h2>
-            <p className="text-slate-500 text-sm mt-1">Visión consolidada de la cartera viva.</p>
+            <h2 className="text-2xl font-bold text-slate-800">Monitoreo de Operaciones Vigentes</h2>
+            <p className="text-slate-500 text-sm mt-1">Operaciones activas en cartera. Seguimiento de covenants y cumplimiento.</p>
           </div>
+          <button className="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-medium shadow-sm flex items-center gap-2 hover:bg-slate-50">
+            <Filter className="w-4 h-4" /> Filtrar
+          </button>
         </div>
 
-        {/* Global Pipeline Table */}
+        {/* Operaciones vigentes Table */}
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
            <div className="px-6 py-4 border-b border-slate-100 font-bold text-slate-700 bg-slate-50/50">Operaciones en Cartera</div>
            <table className="w-full text-left text-sm text-slate-600">
@@ -549,6 +534,85 @@ export default function App() {
     </div>
   );
 
+  const renderManagerHistory = () => (
+    <div className="animate-in fade-in duration-500 pb-12">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">Historial de Operaciones y Gestión de Alertas</h2>
+          <p className="text-slate-500 text-sm mt-1">Operaciones cerradas y alertas activas que requieren atención.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Panel de Alertas */}
+        <div className="lg:col-span-1 space-y-4">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 bg-amber-50 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
+              <h3 className="font-bold text-slate-800 text-sm">Alertas Activas</h3>
+            </div>
+            <div className="p-4 space-y-3 max-h-[400px] overflow-y-auto">
+              {MOCK_ALERTAS.map(alerta => (
+                <div key={alerta.id} className={`p-3 rounded-lg border text-sm
+                  ${alerta.severity === 'Alta' ? 'bg-red-50 border-red-200' : alerta.severity === 'Media' ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}
+                `}>
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="font-mono text-xs text-slate-500">{alerta.opId}</span>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded
+                      ${alerta.severity === 'Alta' ? 'bg-red-200 text-red-800' : alerta.severity === 'Media' ? 'bg-amber-200 text-amber-800' : 'bg-slate-200 text-slate-600'}
+                    `}>{alerta.severity}</span>
+                  </div>
+                  <p className="font-medium text-slate-800">{alerta.message}</p>
+                  <p className="text-xs text-slate-500 mt-1">{alerta.type} · {alerta.date}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Tabla Historial */}
+        <div className="lg:col-span-2">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 font-bold text-slate-700 bg-slate-50/50">Operaciones Cerradas</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-600">
+                <thead className="bg-slate-50 text-slate-900 font-semibold border-b border-slate-200">
+                  <tr>
+                    <th className="px-6 py-4">ID / Proyecto</th>
+                    <th className="px-6 py-4">Cliente</th>
+                    <th className="px-6 py-4">Fondo</th>
+                    <th className="px-6 py-4">Cierre</th>
+                    <th className="px-6 py-4">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {MOCK_HISTORIAL.map(item => (
+                    <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-mono text-xs text-slate-400">{item.id}</div>
+                        <div className="font-bold text-slate-800">{item.name}</div>
+                      </td>
+                      <td className="px-6 py-4">{item.client}</td>
+                      <td className="px-6 py-4">
+                        <span className="text-xs font-bold bg-slate-100 px-2 py-1 rounded">{item.fund}</span>
+                      </td>
+                      <td className="px-6 py-4 text-slate-500">{item.closedDate}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold
+                          ${item.status === 'Cerrado' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}
+                        `}>{item.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex text-slate-900">
       {renderManagerSidebar()}
@@ -556,7 +620,7 @@ export default function App() {
         {/* Manager Header */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10">
           <div className="text-sm font-medium text-slate-500">
-            Panel de Gestión / {managerView === 'PIPELINE' ? 'Pipeline Global' : managerView === 'REQUESTS' ? 'Solicitudes' : managerView}
+            Panel de Gestión / {MANAGER_VIEW_LABELS[managerView]}
           </div>
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -571,13 +635,24 @@ export default function App() {
 
         <main className="p-8 max-w-7xl mx-auto">
            {managerView === 'REQUESTS' && renderManagerRequests()}
-           {managerView === 'PIPELINE' && renderManagerPipeline()}
+           {managerView === 'MONITORING' && renderManagerMonitoring()}
+           {managerView === 'HISTORY' && renderManagerHistory()}
            {managerView === 'EVALUATION' && renderEvaluationView()}
            {managerView === 'MESSAGES' && renderManagerMessages()}
            {managerView === 'SETTINGS' && renderManagerSettings()}
            {managerView === 'NEW' && (
               <div className="max-w-6xl mx-auto pb-12">
-                 <h2 className="text-2xl font-bold text-slate-800 mb-6">Nueva Operación (Interna)</h2>
+                 <h2 className="text-2xl font-bold text-slate-800 mb-2">Alta de operación</h2>
+                 <p className="text-slate-500 text-sm mb-6">Dar de alta una operación a nombre de un cliente ya registrado.</p>
+                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-6">
+                   <label htmlFor="cliente-select" className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Cliente</label>
+                   <select id="cliente-select" className="w-full max-w-md bg-slate-50 border-2 border-slate-200 text-slate-900 font-medium py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600">
+                     <option value="">Seleccione un cliente registrado...</option>
+                     {MOCK_CLIENTES.map(c => (
+                       <option key={c.id} value={c.id}>{c.name} ({c.ref})</option>
+                     ))}
+                   </select>
+                 </div>
                  <SmartScreening state={activeProject} onChange={handleProjectUpdate} onNext={() => {}} />
               </div>
            )}
@@ -587,22 +662,32 @@ export default function App() {
   );
 }
 
-// Helper Component for Sidebar
-const SidebarItem = ({ icon, label, active, onClick, badge }: any) => (
-  <button 
+// --- SidebarItem ---
+interface SidebarItemProps {
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  badge?: string | number;
+}
+
+const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, active, onClick, badge }) => (
+  <button
+    type="button"
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-6 py-3 text-sm font-medium transition-colors border-l-4 relative
+    aria-current={active ? 'page' : undefined}
+    className={`w-full flex items-center gap-3 px-6 py-3 text-sm font-medium transition-colors border-l-4 relative text-left
       ${active 
         ? 'bg-slate-800 text-white border-blue-500' 
         : 'text-slate-400 border-transparent hover:bg-slate-900 hover:text-slate-200'
       }`}
   >
     {icon}
-    {label}
-    {badge && (
-       <span className="absolute right-4 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-         {badge}
-       </span>
+    <span className="flex-1 truncate">{label}</span>
+    {badge != null && badge !== '' && (
+      <span className="absolute right-4 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0">
+        {String(badge)}
+      </span>
     )}
   </button>
 );

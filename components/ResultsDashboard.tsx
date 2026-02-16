@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { ProjectState } from '../types';
 import { QUESTIONS, FUNDS } from '../constants';
 import { calculateRisk } from '../services/riskEngine';
+import { getPrimaryCountry } from '../utils/projectState';
 import { Shield, AlertTriangle, Scale, CheckSquare, Download, FileCheck, Target, Globe, BookOpen, AlertCircle } from 'lucide-react';
 
 interface Props {
@@ -10,8 +11,10 @@ interface Props {
 }
 
 const ResultsDashboard: React.FC<Props> = ({ state, onReset }) => {
+  const primaryCountry = getPrimaryCountry(state);
+
   // Guard clause to prevent crash if accessed directly without data (e.g. from Manager Tab)
-  if (!state.sector || !state.country) {
+  if (!state.sector || !primaryCountry) {
     return (
       <div className="flex flex-col items-center justify-center h-64 p-8 text-center animate-in fade-in">
          <div className="bg-yellow-50 text-yellow-800 p-8 rounded-2xl border border-yellow-100 max-w-md shadow-sm">

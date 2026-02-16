@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FUNDS, SECTORS, COUNTRIES, SOCIAL_CHALLENGES } from '../constants';
+import { FUNDS, SECTORS, COUNTRIES, SOCIAL_CHALLENGES, FOCO_SECTORS, FIS_ENTITY_TYPES } from '../constants';
 import { ProjectState, FundType, ProjectLocation, ProjectActivity } from '../types';
-import { Ban, Info, Bot, CheckCircle, Sparkles, ArrowRight, ShieldAlert, BookOpen, Scale, Zap, Percent, Plus, Trash2, Globe, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Ban, Info, Bot, CheckCircle, Sparkles, ArrowRight, ShieldAlert, BookOpen, Scale, Zap, Percent, Plus, Trash2, Globe, AlertCircle, AlertTriangle, Building2 } from 'lucide-react';
 
 interface Props {
   state: ProjectState;
@@ -24,6 +24,8 @@ const SmartScreening: React.FC<Props> = ({ state, onChange, onNext }) => {
   // Check if any restricted activity exceeds threshold
   const blockingActivity = restrictedActivitiesFound.find(act => act.revenuePercentage > revenueThreshold);
   const isGranularExcluded = !!blockingActivity;
+  // Si hay remedio (Plan de Transición), permitir continuar en lugar de bloquear
+  const hasRemedyForBlocking = isGranularExcluded && !!requiresTransitionPlan;
 
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
 
@@ -32,29 +34,34 @@ const SmartScreening: React.FC<Props> = ({ state, onChange, onNext }) => {
   const hasLocations = state.locations && state.locations.length > 0;
   const hasSector = !!state.sector;
   const hasActivities = state.activities && state.activities.length > 0;
-  const isBlocked = isExcluded || isGranularExcluded;
+  // Solo bloquear si: sector excluido (sin remedio) O actividad restringida sin plan de transición
+  const isBlocked = isExcluded || (isGranularExcluded && !hasRemedyForBlocking);
 
-  // Revenue Validation
+  // Revenue Validation: los porcentajes deben sumar 100%
   const totalLocPercent = state.locations?.reduce((acc, curr) => acc + curr.revenuePercentage, 0) || 0;
   const totalActPercent = state.activities?.reduce((acc, curr) => acc + curr.revenuePercentage, 0) || 0;
+  const locPercentOk = !hasLocations || totalLocPercent === 100;
+  const actPercentOk = !hasActivities || totalActPercent === 100;
 
-  const canProceed = hasFund && hasLocations && hasSector && hasActivities && !isBlocked;
+  const canProceed = hasFund && hasLocations && hasSector && hasActivities && !isBlocked && locPercentOk && actPercentOk;
 
   const getMissingFields = () => {
      const missing = [];
      if (!hasFund) missing.push('Fondo de Origen');
      if (!hasLocations) missing.push('Ubicación (País)');
      if (!hasSector) missing.push('Sector CNAE');
-     if (!hasActivities) missing.push('Actividad Específica');
+     if (!hasActivities) missing.push('Al menos una Actividad Específica');
+     if (hasLocations && totalLocPercent !== 100) missing.push(`% Países = 100% (actual: ${totalLocPercent}%)`);
+     if (hasActivities && totalActPercent !== 100) missing.push(`% Actividades = 100% (actual: ${totalActPercent}%)`);
      return missing;
   };
 
-  // --- LOGIC TO SYNC ARRAYS TO PRIMARY FIELDS ---
-  // Ensure legacy/init migration happens once
+  // Migrar country legacy → locations (una sola vez al montar)
   useEffect(() => {
-     if (state.country && (!state.locations || state.locations.length === 0)) {
-        onChange({ locations: [{ country: state.country, revenuePercentage: 100 }] });
-     }
+    if (state.country && (!state.locations || state.locations.length === 0)) {
+      onChange({ locations: [{ country: state.country, revenuePercentage: 100 }] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- migración única, evita loops
   }, []); 
 
   // Simulating AI Assistant thinking
@@ -83,8 +90,12 @@ const SmartScreening: React.FC<Props> = ({ state, onChange, onNext }) => {
     if (state.activities && state.activities.length > 0) {
       if (restrictedActivitiesFound.length > 0) {
          if (blockingActivity) {
-            setAiSuggestion(`🚫 BLOQUEO: La exposición a "${blockingActivity.name}" supera el umbral permitido.`);
-            return;
+            if (requiresTransitionPlan) {
+              tips.push(`📋 La exposición a "${blockingActivity.name}" supera el umbral (${revenueThreshold}%). Deberá presentar un Plan de Transición creíble hacia Net Zero 2050 para continuar.`);
+            } else {
+              setAiSuggestion(`🚫 BLOQUEO: La exposición a "${blockingActivity.name}" supera el umbral permitido.`);
+              return;
+            }
          } else {
             tips.push(`⚠️ Actividad Restringida: "${restrictedActivitiesFound[0].name}". Requiere Enhanced Due Diligence.`);
          }
@@ -197,6 +208,27 @@ const SmartScreening: React.FC<Props> = ({ state, onChange, onNext }) => {
      updateActivitiesState(newActivities);
   };
 
+  // Autoajustar porcentajes para que sumen 100%
+  const normalizeLocationPercentages = () => {
+    const locs = state.locations || [];
+    if (locs.length === 0) return;
+    const total = locs.reduce((a, l) => a + l.revenuePercentage, 0);
+    if (total === 0) return;
+    const normalized = locs.map(l => ({ ...l, revenuePercentage: Math.round((l.revenuePercentage / total) * 100) }));
+    if (normalized.length > 0) normalized[0].revenuePercentage += 100 - normalized.reduce((a, l) => a + l.revenuePercentage, 0);
+    updateLocationsState(normalized);
+  };
+
+  const normalizeActivityPercentages = () => {
+    const acts = state.activities || [];
+    if (acts.length === 0) return;
+    const total = acts.reduce((a, a2) => a + a2.revenuePercentage, 0);
+    if (total === 0) return;
+    const normalized = acts.map(a => ({ ...a, revenuePercentage: Math.round((a.revenuePercentage / total) * 100) }));
+    if (normalized.length > 0) normalized[0].revenuePercentage += 100 - normalized.reduce((a, a2) => a + a2.revenuePercentage, 0);
+    updateActivitiesState(normalized);
+  };
+
   
   return (
     <div className="flex flex-col lg:flex-row gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -263,6 +295,110 @@ const SmartScreening: React.FC<Props> = ({ state, onChange, onNext }) => {
               </div>
             )}
 
+            {/* FOCO: Datos adicionales (según formulario oficial) */}
+            {state.fund === 'FOCO' && (
+              <div className="space-y-6 p-6 rounded-xl bg-green-50/50 border border-green-100 animate-in fade-in">
+                <div className="flex items-center gap-2 mb-4">
+                  <BookOpen className="w-5 h-5 text-green-600" />
+                  <div>
+                    <h4 className="font-bold text-green-900 text-sm">Datos adicionales FOCO</h4>
+                    <p className="text-xs text-green-700/80">Según formulario <a href="https://www.cofides.es/financiacion/instrumentos-financieros/fondo-coinversion-foco/presenta-tu-propuesta-de-inversion" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">preséntanos tu propuesta</a></p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">Inversión total (EUR)</label>
+                    <input type="number" placeholder="Ej. 5000000" className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm" value={state.investmentTotal || ''} onChange={(e) => onChange({ investmentTotal: e.target.value ? Number(e.target.value) : undefined })} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">% Deuda</label>
+                    <input type="number" min="0" max="100" placeholder="0-100" className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm" value={state.debtPercent ?? ''} onChange={(e) => onChange({ debtPercent: e.target.value ? Number(e.target.value) : undefined })} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">% Equity</label>
+                    <input type="number" min="0" max="100" placeholder="0-100" className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm" value={state.equityPercent ?? ''} onChange={(e) => onChange({ equityPercent: e.target.value ? Number(e.target.value) : undefined })} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Sector FOCO</label>
+                  <select className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm" value={state.focoSector || ''} onChange={(e) => onChange({ focoSector: e.target.value || undefined })}>
+                    <option value="">Seleccione sector...</option>
+                    {FOCO_SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">Coinversor extranjero (entidad)</label>
+                    <input type="text" placeholder="Entidad coinversor" className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm" value={state.coinvestorEntity || ''} onChange={(e) => onChange({ coinvestorEntity: e.target.value || undefined })} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">País origen coinversor</label>
+                    <input type="text" placeholder="País" className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm" value={state.coinvestorCountry || ''} onChange={(e) => onChange({ coinvestorCountry: e.target.value || undefined })} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Nombre del sponsor</label>
+                  <input type="text" placeholder="Sponsor del proyecto" className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm" value={state.sponsorName || ''} onChange={(e) => onChange({ sponsorName: e.target.value || undefined })} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Descripción del proyecto</label>
+                  <textarea rows={3} placeholder="Breve descripción del proyecto de inversión" className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm resize-none" value={state.projectDescription || ''} onChange={(e) => onChange({ projectDescription: e.target.value || undefined })} />
+                </div>
+              </div>
+            )}
+
+            {/* FIS: Datos adicionales (según formulario oficial) */}
+            {state.fund === 'FIS' && (
+              <div className="space-y-6 p-6 rounded-xl bg-purple-50/50 border border-purple-100 animate-in fade-in">
+                <div className="flex items-center gap-2 mb-4">
+                  <Building2 className="w-5 h-5 text-purple-600" />
+                  <div>
+                    <h4 className="font-bold text-purple-900 text-sm">Datos adicionales FIS</h4>
+                    <p className="text-xs text-purple-700/80">Según formulario <a href="https://www.cofides.es/financiacion/instrumentos-financieros/fondo-impacto-social-fis/presenta-tu-propuesta-de-inversion" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">preséntanos tu propuesta FIS</a></p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">Tipo de entidad</label>
+                    <select className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm" value={state.fisEntityType || ''} onChange={(e) => onChange({ fisEntityType: e.target.value || undefined })}>
+                      <option value="">Seleccione...</option>
+                      {FIS_ENTITY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">¿Es una pyme?</label>
+                    <select className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm" value={state.fisIsPyme === undefined ? '' : state.fisIsPyme ? 'Sí' : 'No'} onChange={(e) => onChange({ fisIsPyme: e.target.value === 'Sí' ? true : e.target.value === 'No' ? false : undefined })}>
+                      <option value="">Seleccione...</option>
+                      <option value="Sí">Sí</option>
+                      <option value="No">No</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">Financiación total (EUR)</label>
+                    <input type="number" placeholder="Ej. 2000000" className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm" value={state.investmentTotal || ''} onChange={(e) => onChange({ investmentTotal: e.target.value ? Number(e.target.value) : undefined })} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">Tipo de financiación</label>
+                    <select className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm" value={state.fisFinancingType || ''} onChange={(e) => onChange({ fisFinancingType: (e.target.value as 'Capital' | 'Deuda') || undefined })}>
+                      <option value="">Seleccione...</option>
+                      <option value="Capital">Capital</option>
+                      <option value="Deuda">Deuda</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">¿Cuenta con Teoría del Cambio?</label>
+                  <select className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm" value={state.fisTheoryOfChange === undefined ? '' : state.fisTheoryOfChange ? 'Sí' : 'No'} onChange={(e) => onChange({ fisTheoryOfChange: e.target.value === 'Sí' ? true : e.target.value === 'No' ? false : undefined })}>
+                    <option value="">Seleccione...</option>
+                    <option value="Sí">Sí</option>
+                    <option value="No">No</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
             <div className="h-px bg-slate-100 my-4"></div>
 
             {/* MULTI-LOCATION SELECTOR */}
@@ -271,9 +407,16 @@ const SmartScreening: React.FC<Props> = ({ state, onChange, onNext }) => {
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
                      Ámbito Geográfico (País / % Ingresos)
                   </label>
-                  <span className={`text-xs font-mono font-bold ${totalLocPercent === 100 ? 'text-green-600' : 'text-orange-500'}`}>
-                     Total: {totalLocPercent}%
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-mono font-bold ${totalLocPercent === 100 ? 'text-green-600' : 'text-orange-500'}`}>
+                       Total: {totalLocPercent}%
+                    </span>
+                    {totalLocPercent !== 100 && state.locations && state.locations.length > 1 && (
+                      <button type="button" onClick={normalizeLocationPercentages} className="text-xs font-medium text-blue-600 hover:text-blue-800 underline">
+                        Autoajustar
+                      </button>
+                    )}
+                  </div>
                </div>
                
                {/* List of Added Locations */}
@@ -332,9 +475,20 @@ const SmartScreening: React.FC<Props> = ({ state, onChange, onNext }) => {
                   onChange={handleSectorChange}
                 >
                   <option value="">Seleccione Sector...</option>
-                  {SECTORS.map(s => (
-                    <option key={s.id} value={s.id}>{s.name} (CNAE {s.cnae})</option>
-                  ))}
+                  {SECTORS.map(s => {
+                    const suffix = s.isExcluded 
+                      ? ' — Excluido (sin excepciones)' 
+                      : (s.policyConfig?.requiresTransitionPlan && (s.isRestricted || (s.policyConfig?.restrictedActivities?.length ?? 0) > 0))
+                        ? ' — Financiable con Plan de Transición'
+                        : s.isRestricted 
+                          ? ' — Requiere EDD'
+                          : '';
+                    return (
+                      <option key={s.id} value={s.id}>
+                        {s.name} (CNAE {s.cnae}){suffix}
+                      </option>
+                    );
+                  })}
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
                   <ArrowRight className="w-5 h-5 rotate-90" />
@@ -348,9 +502,16 @@ const SmartScreening: React.FC<Props> = ({ state, onChange, onNext }) => {
                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
                           Mix de Actividades (Use of Proceeds)
                        </label>
-                       <span className={`text-xs font-mono font-bold ${totalActPercent === 100 ? 'text-green-600' : 'text-orange-500'}`}>
-                          Total: {totalActPercent}%
-                       </span>
+                       <div className="flex items-center gap-2">
+                         <span className={`text-xs font-mono font-bold ${totalActPercent === 100 ? 'text-green-600' : 'text-orange-500'}`}>
+                            Total: {totalActPercent}%
+                         </span>
+                         {totalActPercent !== 100 && state.activities && state.activities.length > 1 && (
+                           <button type="button" onClick={normalizeActivityPercentages} className="text-xs font-medium text-blue-600 hover:text-blue-800 underline">
+                             Autoajustar
+                           </button>
+                         )}
+                       </div>
                     </div>
 
                     <div className="space-y-3 mb-4">
@@ -442,46 +603,54 @@ const SmartScreening: React.FC<Props> = ({ state, onChange, onNext }) => {
         {/* --- DYNAMIC COFIDES POLICY OVERLAY --- */}
         {state.sector && (
           <div className={`rounded-xl border shadow-sm p-6 flex gap-4 animate-in fade-in slide-in-from-left-4 transition-all duration-500 ${
-            (isExcluded || isGranularExcluded)
+            isExcluded
               ? 'bg-red-50 border-red-200' 
-              : (isRestricted || restrictedActivitiesFound.length > 0)
-                ? 'bg-amber-50 border-amber-200' 
-                : 'bg-blue-50 border-blue-200'
+              : hasRemedyForBlocking
+                ? 'bg-amber-50 border-amber-200'
+                : isBlocked
+                  ? 'bg-red-50 border-red-200'
+                  : (isRestricted || restrictedActivitiesFound.length > 0)
+                    ? 'bg-amber-50 border-amber-200' 
+                    : 'bg-blue-50 border-blue-200'
           }`}>
             <div className={`p-3 rounded-full shrink-0 h-fit ${
-               (isExcluded || isGranularExcluded) ? 'bg-red-100 text-red-600' : (isRestricted || restrictedActivitiesFound.length > 0) ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
+               isExcluded || isBlocked ? 'bg-red-100 text-red-600' : hasRemedyForBlocking ? 'bg-amber-100 text-amber-600' : (isRestricted || restrictedActivitiesFound.length > 0) ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
             }`}>
-              {(isExcluded || isGranularExcluded) ? <Ban className="w-6 h-6" /> : (isRestricted || restrictedActivitiesFound.length > 0) ? <ShieldAlert className="w-6 h-6" /> : <BookOpen className="w-6 h-6" />}
+              {isExcluded || isBlocked ? <Ban className="w-6 h-6" /> : (hasRemedyForBlocking || isRestricted || restrictedActivitiesFound.length > 0) ? <ShieldAlert className="w-6 h-6" /> : <BookOpen className="w-6 h-6" />}
             </div>
             
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className={`text-sm font-bold uppercase tracking-wide ${
-                  (isExcluded || isGranularExcluded) ? 'text-red-800' : (isRestricted || restrictedActivitiesFound.length > 0) ? 'text-amber-800' : 'text-blue-800'
+                  isExcluded || isBlocked ? 'text-red-800' : hasRemedyForBlocking ? 'text-amber-800' : (isRestricted || restrictedActivitiesFound.length > 0) ? 'text-amber-800' : 'text-blue-800'
                 }`}>
-                  {(isExcluded || isGranularExcluded) 
+                  {isExcluded || isBlocked 
                       ? 'Operación Excluida por Política' 
-                      : (isRestricted || restrictedActivitiesFound.length > 0) 
-                          ? 'Política Sectorial: Actividad Restringida' 
-                          : 'Contexto Metodológico'}
+                      : hasRemedyForBlocking 
+                          ? 'Plan de Transición Obligatorio' 
+                          : (isRestricted || restrictedActivitiesFound.length > 0) 
+                              ? 'Política Sectorial: Actividad Restringida' 
+                              : 'Contexto Metodológico'}
                 </h3>
                 <div className="h-px bg-current opacity-20 flex-1"></div>
               </div>
               
               <p className={`text-sm leading-relaxed mb-3 ${
-                (isExcluded || isGranularExcluded) ? 'text-red-700' : (isRestricted || restrictedActivitiesFound.length > 0) ? 'text-amber-800' : 'text-blue-800'
+                isExcluded || isBlocked ? 'text-red-700' : hasRemedyForBlocking ? 'text-amber-800' : (isRestricted || restrictedActivitiesFound.length > 0) ? 'text-amber-800' : 'text-blue-800'
               }`}>
-                {isGranularExcluded ? state.sector.policyConfig?.exclusionReason : state.sector.cofidesMethodology}
+                {hasRemedyForBlocking 
+                  ? `${state.sector.cofidesMethodology} La exposición a "${blockingActivity?.name}" (${blockingActivity?.revenuePercentage}%) supera el umbral (${revenueThreshold}%). Deberá presentar un Plan de Transición creíble en el siguiente paso.`
+                  : isBlocked ? state.sector.policyConfig?.exclusionReason : state.sector.cofidesMethodology}
               </p>
 
               <div className="flex gap-2 flex-wrap">
-                {(isRestricted || restrictedActivitiesFound.length > 0) && !(isExcluded || isGranularExcluded) && (
+                {(isRestricted || restrictedActivitiesFound.length > 0) && !isBlocked && (
                   <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-white/50 border border-amber-200 text-amber-800 text-xs font-semibold">
                     <Scale className="w-3 h-3" /> Enhanced Due Diligence
                   </span>
                 )}
                 
-                {requiresTransitionPlan && !(isExcluded || isGranularExcluded) && (
+                {requiresTransitionPlan && !isExcluded && (
                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-white/50 border border-orange-200 text-orange-800 text-xs font-semibold">
                      <Zap className="w-3 h-3" /> Requiere Plan de Transición
                    </span>
@@ -492,7 +661,7 @@ const SmartScreening: React.FC<Props> = ({ state, onChange, onNext }) => {
         )}
 
         {/* DNSH Logic Feedback */}
-        {state.fund === 'FOCO' && !(isExcluded || isGranularExcluded) && (
+        {state.fund === 'FOCO' && !isBlocked && (
           <div className="bg-green-50 border-l-4 border-green-500 p-6 rounded-r-xl shadow-sm flex items-start gap-4">
             <div className="bg-green-100 p-2 rounded-full">
                <Sparkles className="w-6 h-6 text-green-600 shrink-0" />
@@ -512,13 +681,13 @@ const SmartScreening: React.FC<Props> = ({ state, onChange, onNext }) => {
         <div className="lg:sticky lg:top-24 space-y-4">
            {/* Bot Header */}
            <div className={`text-white p-5 rounded-2xl shadow-xl border relative overflow-hidden transition-colors duration-500
-             ${(isExcluded || isGranularExcluded) ? 'bg-gradient-to-br from-red-900 to-slate-900 border-red-700' : 'bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700'}
+             ${(isExcluded || isBlocked) ? 'bg-gradient-to-br from-red-900 to-slate-900 border-red-700' : 'bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700'}
            `}>
              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-16 -mt-16"></div>
              
              <div className="flex items-center gap-3 mb-3 relative z-10">
                <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg 
-                 ${(isExcluded || isGranularExcluded) ? 'bg-red-500 shadow-red-500/30' : 'bg-blue-500 shadow-blue-500/30'}
+                 ${(isExcluded || isBlocked) ? 'bg-red-500 shadow-red-500/30' : 'bg-blue-500 shadow-blue-500/30'}
                `}>
                  <Bot className="w-6 h-6 text-white" />
                </div>
@@ -539,7 +708,7 @@ const SmartScreening: React.FC<Props> = ({ state, onChange, onNext }) => {
            </div>
 
            {/* Quick Actions */}
-           {!(isExcluded || isGranularExcluded) && canProceed && (
+           {!(isExcluded || isBlocked) && canProceed && (
              <div className="bg-white p-5 rounded-2xl shadow-lg border border-slate-100 animate-in fade-in slide-in-from-right-4">
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Siguientes Pasos</h4>
                 <button 
