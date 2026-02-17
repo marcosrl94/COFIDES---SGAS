@@ -82,7 +82,7 @@ const LoginScreen: React.FC<Props> = ({ onLogin }) => {
 
            <div className="mt-12 text-center">
               <p className="text-xs text-slate-400">
-                © 2024 COFIDES S.A., S.M.E. Todos los derechos reservados.
+                © 2025 COFIDES S.A., S.M.E. Todos los derechos reservados.
                 <br />Sistema protegido por cifrado de extremo a extremo.
               </p>
            </div>

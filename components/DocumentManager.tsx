@@ -36,7 +36,7 @@ const DocumentManager: React.FC<Props> = ({ state, onChange, onNext, onBack }) =
   // Calculate Progress
   const mandatoryDocs = relevantDocs.filter(d => d.level === 'MANDATORY');
   const mandatoryUploaded = mandatoryDocs.filter(d => state.documents?.[d.id]?.status === 'UPLOADED' || state.documents?.[d.id]?.status === 'VERIFIED').length;
-  const progress = (mandatoryUploaded / mandatoryDocs.length) * 100;
+  const progress = mandatoryDocs.length > 0 ? (mandatoryUploaded / mandatoryDocs.length) * 100 : 100;
 
   // Handle Upload Simulation
   const handleUpload = (docId: string) => {

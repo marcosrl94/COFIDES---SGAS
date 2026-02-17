@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProjectState, ChatMessage } from '../types';
 import SmartScreening from './SmartScreening';
 import DynamicQuestionnaire from './DynamicQuestionnaire';
@@ -42,10 +42,15 @@ const ClientDashboard: React.FC<Props> = ({ state, onChange, messages, onSendMes
   const [wizardStep, setWizardStep] = useState(1);
   const [inputMsg, setInputMsg] = useState('');
 
+  useEffect(() => {
+    const main = document.querySelector('main');
+    main?.scrollTo?.({ top: 0, behavior: 'smooth' });
+  }, [activeView]);
+
   // --- SUB-COMPONENTS ---
 
   const renderInfoTab = () => (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
+    <div className="animate-fade-in-slow max-w-4xl mx-auto">
        <div className="mb-8 text-center">
           <h2 className="text-3xl font-bold text-slate-900 mb-2">Bienvenido a COFIDES</h2>
           <p className="text-slate-600">Financiación que transforma. Elija su línea de actuación.</p>
@@ -145,7 +150,7 @@ const ClientDashboard: React.FC<Props> = ({ state, onChange, messages, onSendMes
   );
 
   const renderSolicitudesList = () => (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
+    <div className="animate-fade-in-slow max-w-4xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Mis Solicitudes</h2>
@@ -188,10 +193,7 @@ const ClientDashboard: React.FC<Props> = ({ state, onChange, messages, onSendMes
               </p>
             </div>
             <button
-              onClick={() => {
-                setActiveView('APPLICATION');
-                setWizardStep(1);
-              }}
+              onClick={() => setActiveView('STATUS')}
               className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-200 text-purple-700 font-medium hover:bg-purple-50 transition-colors"
             >
               <Eye className="w-4 h-4" />
@@ -229,7 +231,7 @@ const ClientDashboard: React.FC<Props> = ({ state, onChange, messages, onSendMes
      ];
 
      return (
-        <div className="max-w-3xl mx-auto animate-in fade-in duration-500">
+        <div className="max-w-3xl mx-auto animate-fade-in-slow">
            <h2 className="text-2xl font-bold text-slate-900 mb-8">Estado del Expediente</h2>
            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
               <div className="relative">
@@ -269,7 +271,7 @@ const ClientDashboard: React.FC<Props> = ({ state, onChange, messages, onSendMes
   };
 
   const renderChatTab = () => (
-     <div className="h-[calc(100vh-140px)] flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 animate-in fade-in duration-500">
+     <div className="h-[calc(100vh-140px)] flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 animate-fade-in-slow">
         <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
            <div>
               <h3 className="font-bold text-slate-800">Centro de Mensajería</h3>
@@ -333,7 +335,7 @@ const ClientDashboard: React.FC<Props> = ({ state, onChange, messages, onSendMes
   );
 
   const renderApplicationWizard = () => (
-     <div className="animate-in fade-in slide-in-from-right-8 duration-500">
+     <div className="animate-fade-in-slow">
         {wizardStep === 1 && (
            <SmartScreening 
              state={state} 
@@ -495,7 +497,7 @@ interface SidebarButtonProps {
 const SidebarButton: React.FC<SidebarButtonProps> = ({ icon, label, active, onClick, badge }) => (
    <button 
       onClick={onClick}
-      className={`w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-lg transition-all relative
+      className={`w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-lg transition-all duration-200 relative
          ${active 
             ? 'bg-purple-600 text-white shadow-md shadow-purple-200' 
             : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}

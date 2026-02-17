@@ -48,7 +48,7 @@ const DynamicQuestionnaire: React.FC<Props> = ({ state, onChange, onNext, onBack
   const totalQuestions = filteredQuestions.length;
   const answeredCount = filteredQuestions.filter(q => state.answers[q.id] !== undefined).length;
   const progressPercentage = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
-  const allAnswered = totalQuestions > 0 && answeredCount === totalQuestions;
+  const allAnswered = totalQuestions === 0 || answeredCount === totalQuestions;
 
   const primaryCountry = getPrimaryCountry(state);
 

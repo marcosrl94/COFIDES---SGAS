@@ -37,11 +37,11 @@ const SmartScreening: React.FC<Props> = ({ state, onChange, onNext }) => {
   // Solo bloquear si: sector excluido (sin remedio) O actividad restringida sin plan de transición
   const isBlocked = isExcluded || (isGranularExcluded && !hasRemedyForBlocking);
 
-  // Revenue Validation: los porcentajes deben sumar 100%
+  // Revenue Validation: los porcentajes deben sumar 100% (tolerancia ±1% por redondeo)
   const totalLocPercent = state.locations?.reduce((acc, curr) => acc + curr.revenuePercentage, 0) || 0;
   const totalActPercent = state.activities?.reduce((acc, curr) => acc + curr.revenuePercentage, 0) || 0;
-  const locPercentOk = !hasLocations || totalLocPercent === 100;
-  const actPercentOk = !hasActivities || totalActPercent === 100;
+  const locPercentOk = !hasLocations || (totalLocPercent >= 99 && totalLocPercent <= 101);
+  const actPercentOk = !hasActivities || (totalActPercent >= 99 && totalActPercent <= 101);
 
   const canProceed = hasFund && hasLocations && hasSector && hasActivities && !isBlocked && locPercentOk && actPercentOk;
 
@@ -51,8 +51,8 @@ const SmartScreening: React.FC<Props> = ({ state, onChange, onNext }) => {
      if (!hasLocations) missing.push('Ubicación (País)');
      if (!hasSector) missing.push('Sector CNAE');
      if (!hasActivities) missing.push('Al menos una Actividad Específica');
-     if (hasLocations && totalLocPercent !== 100) missing.push(`% Países = 100% (actual: ${totalLocPercent}%)`);
-     if (hasActivities && totalActPercent !== 100) missing.push(`% Actividades = 100% (actual: ${totalActPercent}%)`);
+     if (hasLocations && (totalLocPercent < 99 || totalLocPercent > 101)) missing.push(`% Países ≈ 100% (actual: ${Math.round(totalLocPercent)}%)`);
+     if (hasActivities && (totalActPercent < 99 || totalActPercent > 101)) missing.push(`% Actividades ≈ 100% (actual: ${Math.round(totalActPercent)}%)`);
      return missing;
   };
 
@@ -577,9 +577,9 @@ const SmartScreening: React.FC<Props> = ({ state, onChange, onNext }) => {
                    <CheckCircle className="w-4 h-4" /> Todo listo para continuar
                  </span>
                )}
-               {canProceed && (totalLocPercent !== 100 || totalActPercent !== 100) && (
+               {canProceed && (totalLocPercent < 99 || totalLocPercent > 101 || totalActPercent < 99 || totalActPercent > 101) && (
                   <span className="flex items-center gap-2 text-orange-600 font-bold mt-1 text-xs">
-                    <AlertTriangle className="w-3 h-3" /> Revisar porcentajes (Total ≠ 100%)
+                    <AlertTriangle className="w-3 h-3" /> Revisar porcentajes (Total debería ser 100%)
                   </span>
                )}
             </div>
